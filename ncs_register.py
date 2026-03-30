@@ -7,6 +7,7 @@ import ncs_register_legacy as legacy
 from ncs_runtime.batch import run_batch
 from ncs_runtime.email_services import (
     BaseMailboxService,
+    CfMailMailboxService,
     LaMailMailboxService,
     MailboxSession,
     TempmailLolMailboxService,
@@ -53,9 +54,14 @@ def main():
         print(f"\n[Info] LaMail 已启用: {LAMAIL_API_BASE}")
         if LAMAIL_DOMAIN:
             print(f"[Info] LaMail 指定域名: {LAMAIL_DOMAIN}")
+    elif provider == "cfmail":
+        import ncs_register_legacy as _leg
+        worker_domain = _leg._normalize_host(os.environ.get("CFMAIL_WORKER_DOMAIN", ""))
+        email_domain = _leg._normalize_host(os.environ.get("CFMAIL_EMAIL_DOMAIN", ""))
+        print(f"\n[Info] CFMail 已启用: worker={worker_domain or '(via config)'} domain={email_domain or '(via config)'}")
     else:
         print(f"\n❌ 错误: 不支持的 mail_provider={provider}")
-        print("   可选值: lamail / tempmail_lol")
+        print("   可选值: lamail / tempmail_lol / cfmail")
         return
 
     proxy = DEFAULT_PROXY
