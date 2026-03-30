@@ -174,7 +174,7 @@ TASK_LAUNCH_INTERVAL_MAX_SECONDS = max(
     int(_CONFIG.get("task_launch_interval_max_seconds", 3) or TASK_LAUNCH_INTERVAL_MIN_SECONDS),
 )
 
-SUPPORTED_MAIL_PROVIDERS = {"tempmail_lol", "lamail"}
+SUPPORTED_MAIL_PROVIDERS = {"tempmail_lol", "lamail", "cfmail"}
 
 # 全局线程锁
 _print_lock = threading.RLock()
@@ -1552,13 +1552,29 @@ class LaMailMailboxService(BaseMailboxService):
         return self._session
 
 
+class CfMailMailboxService(BaseMailboxService):
+    provider = "cfmail"
+
+    def create_mailbox(self) -> MailboxSession:
+        email, password, token = self.register_client.create_cfmail_email()
+        self._session = MailboxSession(
+            email=email,
+            password=password,
+            token=token,
+            provider=self.provider,
+        )
+        return self._session
+
+
 def _build_mailbox_service(register_client: "ChatGPTRegister", provider: str) -> BaseMailboxService:
     normalized = str(provider or "").strip().lower()
     if normalized == "tempmail_lol":
         return TempmailLolMailboxService(register_client)
     if normalized == "lamail":
         return LaMailMailboxService(register_client)
-    raise ValueError(f"不支持的 mail_provider={provider}，当前仅支持 tempmail_lol / lamail")
+    if normalized == "cfmail":
+        return CfMailMailboxService(register_client)
+    raise ValueError(f"不支持的 mail_provider={provider}，当前仅支持 tempmail_lol / lamail / cfmail")
 
 
 class RegistrationTaskRunner:
@@ -3025,7 +3041,7 @@ def run_batch(total_accounts: int = 3, output_file="registered_accounts.txt",
     # 检查邮箱服务配置
     if provider not in SUPPORTED_MAIL_PROVIDERS:
         print(f"❌ 错误: 不支持的 mail_provider={provider}")
-        print("   可选值: lamail / tempmail_lol")
+        print("   可选值: lamail / tempmail_lol / cfmail")
         return
 
     actual_workers = min(max_workers, total_accounts)

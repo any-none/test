@@ -3,7 +3,7 @@ from typing import Optional
 
 import ncs_register_legacy as legacy
 
-from .email_services import LaMailMailboxService, build_mailbox_service, should_fallback_to_lamail
+from .email_services import CfMailMailboxService, LaMailMailboxService, build_mailbox_service, should_fallback_to_lamail
 
 
 @dataclass

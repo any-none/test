@@ -55,6 +55,15 @@ class LaMailMailboxService(BaseMailboxService):
         return self._session
 
 
+class CfMailMailboxService(BaseMailboxService):
+    provider = "cfmail"
+
+    def create_mailbox(self) -> MailboxSession:
+        email, password, token = self.register_client.create_cfmail_email()
+        self._session = MailboxSession(email=email, password=password, token=token, provider=self.provider)
+        return self._session
+
+
 def should_fallback_to_lamail(error: Exception) -> bool:
     text = str(error or "").lower()
     return "tempmail.lol" in text and "429" in text and "rate limited" in text
@@ -66,4 +75,6 @@ def build_mailbox_service(register_client: "legacy.ChatGPTRegister", provider: s
         return TempmailLolMailboxService(register_client)
     if normalized == "lamail":
         return LaMailMailboxService(register_client)
-    raise ValueError(f"不支持的 mail_provider={provider}，当前仅支持 tempmail_lol / lamail")
+    if normalized == "cfmail":
+        return CfMailMailboxService(register_client)
+    raise ValueError(f"不支持的 mail_provider={provider}，当前仅支持 tempmail_lol / lamail / cfmail")

@@ -58,6 +58,10 @@ jobs:
           LAMAIL_API_KEY: ${{ secrets.LAMAIL_API_KEY }}
           UPLOAD_API_URL: ${{ secrets.UPLOAD_API_URL }}
           UPLOAD_API_TOKEN: ${{ secrets.UPLOAD_API_TOKEN }}
+          MAIL_PROVIDER: ${{ secrets.MAIL_PROVIDER }}
+          CFMAIL_WORKER_DOMAIN: ${{ secrets.CFMAIL_WORKER_DOMAIN }}
+          CFMAIL_EMAIL_DOMAIN: ${{ secrets.CFMAIL_EMAIL_DOMAIN }}
+          CFMAIL_ADMIN_PASSWORD: ${{ secrets.CFMAIL_ADMIN_PASSWORD }}
         run: |
           # 如果系统有 `uv` 命令则使用用户期望的命令，否则降级执行 python
           if command -v uv >/dev/null 2>&1; then
