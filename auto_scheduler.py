@@ -18,7 +18,7 @@ from config_env import env_override
 # ================= 配置 =================
 
 CHECK_INTERVAL_SECONDS = 3600       # 检查间隔：1小时
-ACCOUNT_THRESHOLD = 2500            # 有效账号数量阈值
+ACCOUNT_THRESHOLD = 500             # 有效账号数量阈值
 REGISTER_SCRIPT = "ncs_register.py" # 注册脚本文件名
 
 # 注册参数（对应 ncs_register.py 的 main() 交互）
@@ -433,9 +433,7 @@ def run_once():
         needed = ACCOUNT_THRESHOLD - count
         print(f"[检测] ⚠️  账号不足！缺口 {needed} 个，触发自动注册...")
         register_params = dict(AUTO_PARAMS)
-        register_params["total_accounts"] = max(
-            int(AUTO_PARAMS.get("total_accounts", 10)), needed
-        )
+        register_params["total_accounts"] = int(AUTO_PARAMS.get("total_accounts", 5))
         trigger_registration(register_params, cfg)
         # 注册完成后重新加载配置
         cfg = _load_account_count_config()
