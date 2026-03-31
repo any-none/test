@@ -20,10 +20,11 @@ def run_batch(total_accounts: int = 3, output_file: str = "registered_accounts.t
         print("   可选值: lamail / tempmail_lol")
         return
 
-    actual_workers = min(max_workers, total_accounts)
+    target_success = total_accounts   # 目标成功数，失败不计入
+    actual_workers = min(max_workers, target_success)
     print(f"\n{'#' * 60}")
     print("  ChatGPT 批量自动注册")
-    print(f"  注册数量: {total_accounts} | 并发数: {actual_workers}")
+    print(f"  目标成功数: {target_success} | 并发数: {actual_workers}")
     print(f"  批量模式: {legacy.BATCH_MODE}")
     print(f"  邮箱服务: {provider}")
     if provider == "tempmail_lol":
@@ -46,30 +47,34 @@ def run_batch(total_accounts: int = 3, output_file: str = "registered_accounts.t
     success_count = 0
     fail_count = 0
     completed_count = 0
+    idx = 0
     start_time = time.time()
     upload_every_n = max(1, int(cpa_upload_every_n or 1))
     since_last_upload = 0
 
-    legacy._render_apt_like_progress(completed_count, total_accounts, success_count, fail_count, start_time)
+    legacy._render_apt_like_progress(success_count, target_success, success_count, fail_count, start_time)
 
     with ThreadPoolExecutor(max_workers=actual_workers) as executor:
-        pending_indexes = list(range(1, total_accounts + 1))
         active_futures = {}
 
-        while pending_indexes or active_futures:
-            while pending_indexes and len(active_futures) < actual_workers:
-                idx = pending_indexes.pop(0)
-                future = executor.submit(run_single, idx, total_accounts, proxy, output_file)
+        while success_count < target_success or active_futures:
+            # 补充任务直到凑满并发数，或已达目标
+            while success_count + len(active_futures) < target_success and len(active_futures) < actual_workers:
+                idx += 1
+                future = executor.submit(run_single, idx, target_success, proxy, output_file)
                 active_futures[future] = idx
-                if legacy.BATCH_MODE == "pipeline" and pending_indexes:
+                if legacy.BATCH_MODE == "pipeline" and (success_count + len(active_futures) < target_success):
                     time.sleep(legacy.random.uniform(
                         legacy.TASK_LAUNCH_INTERVAL_MIN_SECONDS,
                         legacy.TASK_LAUNCH_INTERVAL_MAX_SECONDS,
                     ))
 
+            if not active_futures:
+                break
+
             done, _ = wait(list(active_futures.keys()), return_when=FIRST_COMPLETED)
             for future in done:
-                idx = active_futures.pop(future)
+                task_idx = active_futures.pop(future)
                 try:
                     ok, _, err = future.result()
                     if ok:
@@ -81,26 +86,26 @@ def run_batch(total_accounts: int = 3, output_file: str = "registered_accounts.t
                             since_last_upload = 0
                     else:
                         fail_count += 1
-                        print(f"  [账号 {idx}] 失败: {err}")
+                        print(f"  [账号 {task_idx}] 失败: {err}")
                 except Exception as error:
                     fail_count += 1
                     with legacy._print_lock:
-                        print(f"[FAIL] 账号 {idx} 线程异常: {error}")
+                        print(f"[FAIL] 账号 {task_idx} 线程异常: {error}")
                 finally:
                     completed_count += 1
                     legacy._render_apt_like_progress(
-                        completed_count, total_accounts, success_count, fail_count, start_time
+                        success_count, target_success, success_count, fail_count, start_time
                     )
 
     with legacy._print_lock:
         print()
 
     elapsed = time.time() - start_time
-    avg = elapsed / total_accounts if total_accounts else 0
+    avg = elapsed / completed_count if completed_count else 0
     print(f"\n{'#' * 60}")
     print(f"  注册完成! 耗时 {elapsed:.1f} 秒")
-    print(f"  总数: {total_accounts} | 成功: {success_count} | 失败: {fail_count}")
-    print(f"  平均速度: {avg:.1f} 秒/个")
+    print(f"  尝试: {completed_count} | 成功: {success_count} | 失败: {fail_count}")
+    print(f"  平均速度: {avg:.1f} 秒/次")
     if success_count > 0:
         print(f"  结果文件: {output_file}")
     print(f"{'#' * 60}")
